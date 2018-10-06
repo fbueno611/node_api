@@ -65,8 +65,8 @@ obterUsuario(function callback(erro, usuario) {
         if (erro1) {
             throw new Error('Deum Ruim em Endereco')
         }
-        obterTelefone(usuario.id, function callback2(erro2,telefone){
-            if(erro2) {
+        obterTelefone(usuario.id, function callback2(erro2, telefone) {
+            if (erro2) {
                 throw new Error('Deu Ruim em Telefone')
             }
 

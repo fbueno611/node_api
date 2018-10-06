@@ -1,0 +1,344 @@
+//
+// instalamos um módulo para observar alterações e 
+// reiniciar a aplicação automoticamente
+// npm install -g nodemon
+
+// npm i vision@4 hapi-swagger@7 inert@4
+// -> vision + inert expoem um front end e arquivos estáticos
+// -> hapi-swagger cria uma documentação baseada nas rotas criadas
+
+/*
+ Quando trabalhamos com APIs Rest, trabalhamos com serviços sem estado
+ Não temos mais sessão, não guardamos mais cookies
+ Trafegamos apenas chaves de autenticação e não sabemos o estado
+ Do usuario anterior 
+
+ Para trabalhar com o Padão Rest, seguimos algumas especificações 
+
+ AÇÃO      - METODO HTTP - URL - EXEMPLO
+ CADASTRAR - POST        - /herois - POST -> /herois body {name: 'nome'}
+ LISTAR    - GET         - /herois - GET -> /herois?ignore=10&limit=5
+ REMOVER   - DELETE      - /herois/:id - DELETE /herois/1
+ ATUALIZAR - PATCH      - /herois/:id - PATCH /herois/1 body {name: 'nome'}
+ ATUALIZAR - PUT      - /herois/:id - PUT /herois/1 
+    body {name: 'nome', idade: 15, dataNascimento: } 
+    (SEMPRE OBJ COMPLETO)
+
+
+- Atualizar a cor, de um produto, de um cliente
+ATUALIZAR - PATCH 
+    /customers/:id/product/:id/color
+
+*/
+
+// importamos um módulo nativo do Node.js para criação
+// de serviços web
+// const http = require('http')
+
+// http.createServer((request, response) => {
+
+//     response.end('Olá Node.js!')
+// })
+//     .listen(3000, () => console.log('servidor está rodando!!'))
+
+// npm install hapi@16
+/*
+    1o passo: Instanciar o servidor
+    2o passo: Definir a porta
+    3o passo: Definir a rota
+    4o passo: Inicializar o servidor
+*/
+const Vision = require('vision')
+const HapiSwagger = require('hapi-swagger')
+const Inert = require('inert')
+
+const Database = require('./databaseMongoDb')
+// sabemos que o Javascript acontece algumas BIZARRICES
+// e não temos tempo para ficar validando estas coisas
+// para evitar validar variaveis, valores, tipos e regras
+// podemos definir um conjunto de regras que serão validadas
+// antes de chamar a nossa API (handler)
+// npm install joi
+const Joi = require('joi')
+
+// instalamos um módulo para criar um token de autenticação
+// enviamos um dado BÁSICO de cliente (nunca coloque senha)
+// nosso token poderá ser descriptografado
+// mas nunca gerado novamente, ou alterado
+// npm install jsonwebtoken hapi-auth-jwt2@7
+const Jwt = require('jsonwebtoken')
+const HapiJwt = require('hapi-auth-jwt2')
+
+const Hapi = require('hapi')
+const app = new Hapi.Server()
+app.connection({ port: 4000 })
+
+/*
+    Para definir uma rota, definimos uma resposta de acordo com a chamada
+    quando um cliente pedir a /herois, com o metodo GET
+    devemos chamar uma função que retorna seu resultado
+*/
+async function run(app) {
+    await app.register([
+        Vision,
+        Inert,
+        {
+            register: HapiSwagger,
+            options: { info: { title: 'API Herois', version: 'v1.0' } }
+        },
+        HapiJwt
+    ])
+
+    // definimos uma estratégia pre definida de autenticação
+    // por padrão é sem autenticação, mas agora, todas as
+    // rotas precisarão de um token nos headers para funcionar
+    app.auth.strategy('jwt', 'jwt', {
+        key: 'MINHA_CHAVE_SECRETA',
+        validateFunc: (decoded, request, callback) => {
+            // caso queira negar uma requisição é só mandar
+            // o false
+            callback(null, true)
+        },
+        verifyOptions: { algorithms: ['HS256'] }
+    })
+    app.auth.default('jwt')
+    // para trabalhar com o Swagger, registramos 
+    // 3 plugins
+    // difinimos o HapiSwagger como o padrão de plugin HapiJS
+
+    // para expor nossa rota para o mundo
+    // precisamos adicionar a propriedade api na configuração
+    // da rota
+
+
+
+
+    await Database.connect()
+
+    app.route([
+        {
+            path: '/herois',
+            method: 'GET',
+            config: {
+                // 3 abaixo para o swagger
+                tags: ['api'],
+                description: 'Listar herois com paginação',
+                notes: 'Deve enviar o ignore e limit para paginar',
+
+                validate: {
+                    // podemos validar todo tipo de entrada da 
+                    // aplição
+                    // ?nome=err = query
+                    // body = payload
+                    // headers = headers
+                    // herois/123123123 => params
+                    // http://localhost:4000/herois?ignore=0&limite=150&nome=Lanterna
+                    headers: Joi.object({
+                        authorization: Joi.string().required()
+                    }).unknown(),
+
+                    query: {
+                        nome: Joi
+                            .string()
+                            .max(100)
+                        ,
+
+                        limite: Joi.number()
+                            .required()
+                            .max(150),
+
+                        ignore: Joi.number()
+                            .required()
+
+                    }
+                }
+            },
+            handler: async (request, reply) => {
+                try {
+                    // para pegar a queryString
+                    // /herois?limite=30&ignore=0
+                    // const limite = request.query.limite
+                    // const ignore = request.query.ignore
+
+                    // extraimos somente o necessario de uma variavel
+                    const { limite, ignore, nome } = request.query
+                    const queryContains = {
+                        nome: { $regex: `.*${nome}.*`, $options: 'i' }
+                    }
+
+                    const filtro = nome ? queryContains : {}
+
+                    // const limiteINteiro = parseInt(limite)
+                    // console.log('limiteINteiro', limiteINteiro)
+                    // const ignoreInteiro = parseInt(ignore)
+                    // 0 === '0'
+
+                    return reply(await Database.listar(filtro, limite, ignore))
+                }
+                catch (error) {
+                    console.log('DEU RUIM', error)
+                    return reply('deu ruim')
+                }
+
+            }
+        }
+        ,
+        {
+            path: '/herois',
+            method: 'POST',
+            handler: async (request, reply) => {
+                try {
+                    const heroi = { nome, poder, idade } = request.payload
+                    const resultado = await Database.cadastrar(heroi)
+                    return reply(resultado)
+                }
+                catch (error) {
+                    console.error('DEU RUIM', error)
+                    return reply('DEU RUIM')
+                }
+            },
+            config: {
+                tags: ['api'],
+                description: 'Cadastrar heroi',
+                notes: 'Deve cadastrar heroi',
+
+                validate: {
+                    headers: Joi.object({
+                        authorization: Joi.string().required()
+                    }).unknown(),
+                    payload: {
+                        nome: Joi.string()
+                            .required()
+                            .max(100)
+                            .min(5),
+
+                        poder: Joi.string()
+                            .required()
+                            .max(100)
+                            .min(3),
+
+                        idade: Joi.number()
+                            .required()
+                            .min(18)
+                            .max(150)
+
+                    }
+                }
+            }
+        }
+        ,
+        {
+            path: '/herois/{id}',
+            method: 'DELETE',
+            config: {
+                tags: ['api'],
+                description: 'Remover heroi pelo Id',
+                notes: 'Deve remover o heroi pelo Id',
+                validate: {
+                    headers: Joi.object({
+                        authorization: Joi.string().required()
+                    }).unknown(),
+                    params: {
+                        id: Joi.string().required()
+                    }
+                }
+            },
+            handler: async (request, reply) => {
+                try {
+                    const { id } = request.params
+                    const result = await Database.remover({ _id: id })
+                    return reply(result)
+                }
+                catch (error) {
+                    console.error('DEU RUIM', error)
+                    return reply('deu ruim!')
+                }
+            }
+        },
+        {
+            path: '/herois/{id}',
+            method: 'PATCH',
+            handler: async (request, reply) => {
+                try {
+                    const { id } = request.params;
+                    const heroi = { nome, poder, idade } = request.payload
+                    const heroiString = JSON.stringify(heroi)
+                    const heroiJson = JSON.parse(heroiString)
+                    const resultado = await Database.atualizar(id, heroiJson)
+
+                    return reply(resultado)
+                }
+                catch (error) {
+                    console.error('DEU RUIM', error)
+                    return reply('deu ruim!')
+                }
+            },
+            config: {
+                tags: ['api'],
+                description: 'Atualizar heroi pelo Id',
+                notes: 'Deve atualizar o heroi pelo Id passando seus parametros',
+                validate: {
+                    headers: Joi.object({
+                        authorization: Joi.string().required()
+                    }).unknown(),
+                    params: {
+                        id: Joi.string().required()
+                    },
+                    payload: {
+                        nome: Joi.string()
+
+                            .max(100)
+                            .min(5),
+
+                        poder: Joi.string()
+
+                            .max(100)
+                            .min(3),
+
+                        idade: Joi.number()
+
+                            .min(18)
+                            .max(150)
+
+                    }
+                }
+            }
+        },
+
+        {
+            path: '/login',
+            method: 'POST',
+            handler: (request, reply) => {
+                const { usuario, senha } = request.payload
+                if (usuario !== 'xuxadasilva' || senha !== 123)
+                    return reply('NAO PODE ACESSAR!')
+
+                // GERAMOS o token de autenticaticação
+                const token = Jwt.sign({ usuario: usuario },
+                    'MINHA_CHAVE_SECRETA')
+
+                return reply({ token })
+
+            },
+            config: {
+                // desabilitamos a autenticação para conseguir um token
+                auth: false,
+                description: 'Fazer login',
+                tags: ['api'],
+                validate: {
+
+                    payload: {
+                        usuario: Joi.string().required(),
+                        senha: Joi.number().integer().required()
+                    }
+                }
+            }
+        }
+
+    ])
+
+    await app.start()
+    console.log('API rodando !!')
+}
+
+run(app)
