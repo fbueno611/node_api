@@ -169,7 +169,7 @@ class DatabaseMongoDb {
     // irá usar esses para fazer a requisição
     async listar(filtro = {}, limite = 100, ignore = 0) {
         const resultado = await this.personagem
-            .find(filtro)
+            .find(filtro, { __v: 0 })
             // limitamos a quantidade de registro
             .limit(limite)
             .skip(ignore)
