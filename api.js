@@ -12,7 +12,7 @@
 
 
 // para criar uma aplicação 
-// heroku apps:creat api-heroes-fbueno611
+// heroku apps:create api-heroes-fbueno611
 
 // para utilizar nossa app no Heroku
 // criamos um script para ser executar em produção
@@ -246,20 +246,28 @@ async function run(app) {
             config: {
                 tags: ['api'],
                 description: 'Deletar um heroi por um id',
-                notes: 'Deve enviar o id do heroi pela url'
-            },
-            handler: async (request, reply) => {
-                try {
-                    const { id } = request.params
-                    const result = await Database.remover({ _id: id })
-                    return reply(result)
-                } catch (error) {
-                    console.error('Deu Ruim', error)
-                    return reply(Boom.internal())
-                }
+                notes: 'Deve enviar o id do heroi pela url',
+                validate: {
+                    headers: Joi.object({
+                        authorization: Joi.string().required()
+                    }).unknown(),
+                    params: {
+                        id: Joi.string().required()
+                    },
 
-            }
-        },
+                },
+                handler: async (request, reply) => {
+                    try {
+                        const { id } = request.params
+                        const result = await Database.remover({ _id: id })
+                        return reply(result)
+                    } catch (error) {
+                        console.error('Deu Ruim', error)
+                        return reply(Boom.internal())
+                    }
+
+                }
+            },
         {
             path: '/herois/{id}',
             method: 'PATCH',
