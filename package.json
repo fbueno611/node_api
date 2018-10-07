@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "deploy": "NODE_ENV=production node api.js",
+    "deploy": "NODE_ENV=production pm2-runtime api.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
@@ -11,9 +11,9 @@
   "keywords": [],
   "description": "",
   "dependencies": {
-    "boom": "^7.2.0",
+    "boom": "7.2.0",
     "commander": "2.18.0",
-    "dotenv": "^6.0.0",
+    "dotenv": "6.0.0",
     "hapi": "16.6.3",
     "hapi-auth-jwt2": "7.1.0",
     "hapi-swagger": "7.10.0",

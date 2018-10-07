@@ -1,3 +1,33 @@
+// para controlar e metrificar nossa aplicação 
+// vamos usar uma ferramenta que caso aconteça alguma
+// situação inesperada (cpu no max, memoria no max, espaço em disco)
+// vai alertar aos devs, ou reiniciar a aplicação
+// sudo npm install pm2 -g
+
+// para inicializar uma aplicação e rodar em segundo plano
+// pm2 start --name nomeDaAPI arquivo.js
+
+// para parar a palicação
+// pm2 stop nomeDaAPI
+// pm2 list -> listar todas
+// pm2 monit nomeDaAPI (mostar um painel)
+
+//caso queira 
+// pm2 start --name nomeDaAPI -i 10 arquivo.js (api-heroes-fbueno611)
+// pm2 start --name api-heroes-fbueno611 -i 10 api.js 
+
+// quando uma aplicação entra em segundo plano, ela manda um sinal
+// para o sistema operacional informando que terminou a execução
+// pm2-rumtime arquivo.js
+
+// para que o heroku entenda o pm2, precisamos instalar globalmente
+// antes de instalar as dependencias 
+// adicionamos no script do package.jason, o preinstall
+/*
+copiamos do pm2 conect e colamos no 
+heroku config:set PM2_PUBLIC_KEY=k1cz02py0llogra PM2_SECRET_KEY=e4o5gqt2bd2lgtc
+*/
+
 // para logar no heroku usar o comando:
 // heroku login
 
