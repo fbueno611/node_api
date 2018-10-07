@@ -1,3 +1,57 @@
+// para logar no heroku usar o comando:
+// heroku login
+
+//heroku apps
+
+// git init -> inicializar o repositorio
+// criar .gitignore com os arquivos a ignorar
+
+// git status -> para visualizar se os arquivos estão de acordo
+// git add . -> adicionar todos os arquivos da minha pasta
+// git commit -m "Uma mensagem da modificação"
+
+
+// para criar uma aplicação 
+// heroku apps:creat api-heroes-fbueno611
+
+// para utilizar nossa app no Heroku
+// criamos um script para ser executar em produção
+// quando o heroku chamar nossa aplicação deverá chamar via
+// npm run deploy
+// scrips pre definidos -> start, test
+// caso criar algum script diferete,
+// deve colocar a palavra run no comando
+// npm start, npm test
+
+// para trabalhar com o feroku, precisamos criar 
+// um arquivo de configuração
+// Procfile -> responsável por falar como nossa aplicação rodará
+
+// fomos no mlab e criamos nossa database
+// criamos nosso usuario e senha
+// adicionamos a string de conexão no .env.prod
+// para rodar noss aplicação e testar
+// NODE_ENV=production nodemon api.js
+
+/*
+Para dividir nossos ambientes, criamos dois arquivos 
+que serão nossos arquivos de desenvolvimento e pordução
+após inserior este arquivo em nosso ambiente, conseguimos obter este arquivo em nosso ambiente
+conseguimos process.env do Node.js
+para visualizar as variaveis dos arquivos, instalamos um modulo chamado dotenv
+npm install dotenv
+*/
+const { config } = require('dotenv')
+if (process.env.NODE_ENV == 'production')
+    config({ path: 'config/.env.prod' })
+else
+    config({ path: 'config/.env.dev' })
+
+//instalamos um modulo para padronizar mensagens de erro 
+//e status HTTP
+// npm install boom
+const Boom = require('boom')
+
 // instalamos uma módulo pra observar alterações e 
 //reiniciar a aplicação automaticamente
 // sudo npm install -g nodemon
@@ -71,7 +125,7 @@ const HapiJwt = require('hapi-auth-jwt2')
 
 const Hapi = require('hapi')
 const app = new Hapi.Server()
-app.connection({ port: 4000 })
+app.connection({ port: process.env.PORT })
 
 /*
 Para definir uma rota, definimos uma resposta de acordo com a chamada
@@ -91,7 +145,7 @@ async function run(app) {
     ])
 
     app.auth.strategy('jwt', 'jwt', {
-        key: 'MINHA_CHAVE_SECRETA',          // Never Share your secret key
+        key: process.env.JWT_KEY,          // Never Share your secret key
         validateFunc: (decoded, request, callback) => {
             callback(null, true)
         },            // validate function defined above
@@ -153,7 +207,7 @@ async function run(app) {
 
                 } catch (error) {
                     console.error('deu ruim', error)
-                    return reply('deu ruim')
+                    return reply(Boom.internal())
                 }
             }
         },
@@ -167,7 +221,7 @@ async function run(app) {
                     return reply(resultado)
                 } catch (error) {
                     console.error('Deu ruim', error)
-                    return reply('Deu ruim')
+                    return reply(Boom.internal())
                 }
             },
             config: {
@@ -201,7 +255,7 @@ async function run(app) {
                     return reply(result)
                 } catch (error) {
                     console.error('Deu Ruim', error)
-                    return reply('Deu ruim')
+                    return reply(Boom.internal())
                 }
 
             }
@@ -220,7 +274,7 @@ async function run(app) {
 
                 } catch (error) {
                     console.error('Deu Ruim', error)
-                    return reply('Deu Ruim')
+                    return reply(Boom.internal())
                 }
             },
             config: {
@@ -248,11 +302,12 @@ async function run(app) {
             method: 'POST',
             handler: (request, reply) => {
                 const { usuario, senha } = request.payload
-                if (usuario !== 'xuxadasilva' || senha !== 123)
-                    return reply('Não pode acessar!!!')
+                if (usuario !== process.env.USUARIO ||
+                    senha !== parseInt(process.env.SENHA))
+                    return reply(Boom.unauthorized())
 
                 const token = Jwt.sign({ usuario: usuario },
-                    'MINHA_CHAVE_SECRETA')
+                    process.env.JWT_KEY)
 
                 return reply({ token })
 
@@ -273,7 +328,7 @@ async function run(app) {
     ])
 
     await app.start()
-    console.log('API Rodando!!!')
+    console.log(`API Rodando em ${process.env.NODE_ENV || "dev"}!!!`)
 }
 
 run(app)
