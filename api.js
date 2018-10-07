@@ -254,20 +254,21 @@ async function run(app) {
                     params: {
                         id: Joi.string().required()
                     },
-
                 },
-                handler: async (request, reply) => {
-                    try {
-                        const { id } = request.params
-                        const result = await Database.remover({ _id: id })
-                        return reply(result)
-                    } catch (error) {
-                        console.error('Deu Ruim', error)
-                        return reply(Boom.internal())
-                    }
 
-                }
             },
+            handler: async (request, reply) => {
+                try {
+                    const { id } = request.params
+                    const result = await Database.remover({ _id: id })
+                    return reply(result)
+                } catch (error) {
+                    console.error('Deu Ruim', error)
+                    return reply(Boom.internal())
+                }
+
+            }
+        },
         {
             path: '/herois/{id}',
             method: 'PATCH',
