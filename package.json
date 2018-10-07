@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "preinstall": "npm install -g pm2",
     "deploy": "NODE_ENV=production pm2-runtime api.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
